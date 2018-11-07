@@ -1,0 +1,352 @@
+use Sep19CHN
+create schema EHS
+
+------------------------------------User table--------------------------------------
+create table EHS.Users
+(
+UserName varchar(25) primary key,
+UserPassword varchar(25) not null 
+
+)
+
+----------------------------------User Proc--------------------------------------------
+Create proc EHS.usp_AddUsers
+
+@UserName varchar(25),
+@Password varchar(25)
+as
+begin 
+insert into EHS.Users values(@UserName,@Password)
+end
+
+------------------------------------------------get User---------------------------------------------
+create proc EHS.usp_GetUsers
+as
+begin
+select UserName from EHS.Users
+end
+
+
+select * from EHS.Users
+
+
+
+
+create proc EHS.usp_LoginUsers
+@UserName varchar(25),
+@Password varchar(25)
+as
+declare @status int
+begin
+if exists (select*from EHS.Users where  UserName=@UserName and UserPassword=@Password)
+set @status=1
+else
+set @status=0
+
+select @status
+end  
+exec EHS.usp_LoginUsers 'abc' ,'abcd' 
+
+
+
+-----------------------------------State table-----------------------------------------------
+create table EHS.State
+(
+StateId int identity(1,1) primary key, 
+StateName varchar(30)
+)
+
+CREATE proc EHS. usp_DisplayState
+AS
+BEGIN
+select * from EHS.State
+END
+
+exec  EHS.usp_DisplayState
+
+
+
+-----------------------------------City table-----------------------------------------------
+create table EHS.City
+(
+
+CityId int identity(1,1) primary key, 
+CityName varchar(50) not null, 
+StateId int not null,
+
+)
+---------------------------
+create proc EHS.usp_LoadCity
+as
+begin
+select * from EHS.City
+end
+exec EHS.usp_LoadCity
+--------------------------
+CREATE PROC EHS.uap_AddCity
+@CityName VARCHAR(25),
+@StateId int
+AS
+declare @status int
+begin
+if exists (select*from EHS.City where  CityName = @CityName)
+set @status=1
+else
+insert into EHS.City values(@CityName,@StateId)
+set @status=0
+
+select @status
+end
+
+exec EHS.uap_AddCity 'hyderabad',1
+
+
+
+
+----------------------------Seller----------------------------------------------------------------------------------
+
+
+-------------modification done by removing nt null--------------------------------
+create table EHS.Seller
+(
+SellerId int identity primary key, 
+UserName varchar(25) , 
+FirstName varchar(25), 
+LastName varchar(25), 
+DateofBirth date , 
+PhoneNo varchar(10) , 
+Address varchar(250), 
+StateId int,  
+CityId int,  
+EmailId varchar(50),
+
+)
+
+
+select * from EHS.Seller
+
+
+create proc EHS.usp_NextSellerId
+@newSellerId int out
+As
+BEGIN
+set @newSellerId= (select IDENT_CURRENT('EHS.Seller')+IDENT_INCR('EHS.Seller'))
+End
+
+
+
+
+
+
+
+
+alter proc EHS.usp_AddSeller
+@UserName varchar(25), 
+@FirstName varchar(25), 
+@LastName varchar(25), 
+@DateofBirth date, 
+@PhoneNo varchar(10), 
+@Address varchar(250), 
+@StateId int,  
+@CityName varchar(25),  
+@EmailId varchar(50)
+as
+begin
+declare @CityCheck int
+EXEC EHS.uap_AddCity @CityName,@StateId
+insert into EHS.Seller(UserName,FirstName,LastName,DateofBirth,PhoneNo,Address,StateId) values (@UserName,@FirstName,@LastName,@DateofBirth,@PhoneNo,@Address,@StateId)
+declare @NewCityId int = (select CityId from EHS.City where CityName = @CityName)
+update EHS.Seller set CityId=@NewCityId where UserName = @UserName 
+update EHS.Seller set EmailId = @EmailId where UserName = @UserName 
+end
+exec EHS.usp_AddSeller 'User2','FName','LName','1/1/2018','9816396124','Street XYZ NYC',1,'Shimla','email@provider.com'
+truncate table EHS.Seller
+select * from EHS.Seller
+
+
+
+
+
+ select * from EHS.Property
+
+
+ select * from EHS.Seller
+ select * from EHS.City
+
+
+ create proc EHS.usp_ValidateSeller
+@UserName varchar(25)
+as
+declare @status int
+begin
+if exists (select*from EHS.Seller where  UserName=@UserName)
+set @status=1
+else
+set @status=0
+
+select @status
+end  
+
+exec EHS.usp_ValidateSeller'SaiTeja' 
+
+
+----------------------------Buyer -----------------------------------------------------------------------------------
+create table EHS.Buyer
+(
+BuyerId int identity primary key, 
+UserName varchar(25) not null,
+FirstName varchar(25) not null, 
+LastName varchar(25), 
+DateOfBirth date not null, 
+PhoneNo varchar(10) not null, 
+EmailId varchar(50) not null
+)
+
+alter proc EHS.usp_AddBuyer
+ 
+ @UserName varchar(25),
+ @FirstName varchar(25),
+ @LastName varchar(25),
+ @dob date,
+ @PhoneNo varchar(10),
+ @Email varchar(50)
+ AS 
+ Begin
+ insert into EHS.Buyer values(@UserName,@FirstName,@LastName,@dob,@PhoneNo,@Email)
+ End
+
+create proc EHS.usp_ValidateBuyer
+@UserName varchar(25)
+as
+declare @status int
+begin
+if exists (select*from EHS.Buyer where  UserName=@UserName)
+set @status=1
+else
+set @status=0
+
+select @status
+end  
+----------------------------------Property Table------------------------------------------------------------------------
+ create table EHS.Property
+ (
+ PropertyId int identity(1,1) primary key,
+ PropertyName varchar(50) not null, 
+ PropertyType varchar(15) not null, 
+ PropertyOption bit not null, 
+ IsVerified bit not null,
+ IsActive bit not null,
+ Description varchar(250),
+ Address varchar(250) not null, 
+ PriceRange money not null, 
+ InitialDeposit money not null, 
+ Landmark varchar(25) not null,
+ SellerId int,
+)
+
+select * from EHS.Property
+
+
+alter proc EHS.usp_AddProperty
+ @UserName varchar(25),
+ @PropertyName varchar(50), 
+ @PropertyType varchar(15), 
+ @PropertyOption varchar(25), 
+ @IsVerified bit,
+ @IsActive bit ,
+ @Description varchar(250),
+ @Address varchar(250), 
+ @PriceRange money, 
+ @InitialDeposit money , 
+ @Landmark varchar(25),
+ @PropertyState INT
+ AS 
+ Begin 
+ declare @SellerId int = (select SellerId from EHS.Seller where UserName = @UserName)
+ insert into EHS.Property values(@PropertyName,@PropertyType,@PropertyOption,@IsVerified,@IsActive,@Description,@Address,@PriceRange,@InitialDeposit,@Landmark,@SellerId,@PropertyState)
+ End
+
+ ALTER TABLE EHS.Property ADD PropertyOption varchar(30)
+ ALTER TABLE EHS.Property ALTER COLUMN PropertyState INT
+
+ exec EHS.usp_AddProperty 'test5','TestProp5','3 BHK','Rent','TRUE','TRUE','3BHK FLAT AVAILABLE','XYZ ABC NYC',10000.0,15000.0,'SIPCOT',1
+ SELECT * FROM EHS.Property
+
+ create proc EHS.usp_DisplaySellerProperty
+ @UserName varchar(25)
+ AS
+ BEGIN
+ DECLARE @SellerId int = (SELECT SellerId from EHS.Seller WHERE UserName = @UserName)
+ select * from EHS.Property where SellerId = @SellerId
+ end
+ exec EHS.usp_DisplaySellerProperty 'sai'
+ --------------------------------------
+ create proc EHS.usp_GetSellerId
+ @UserName varchar(25)
+ as
+ begin
+ select SellerId from EHS.Seller where UserName = @UserName
+ end
+ exec EHS.usp_GetSellerId 'sai'
+ ---------------------------------------
+-------------------------------------------------------------Search-----------------------------------------------
+
+
+alter proc EHS.usp_SearchByType
+@PropertyType varchar(15)
+AS
+BEGIN
+SELECT PropertyName, Landmark, PriceRange FROM EHS.Property WHERE PropertyType=@PropertyType
+END
+exec EHS.usp_SearchByType '3 BHK'
+
+
+
+create proc EHS.usp_SearchByTypeAndCity
+@PropertyType varchar(15),
+@username varchar(15),
+@City varchar(25)
+AS
+BEGIN
+SELECT PropertyName,Landmark , PriceRange FROM EHS.Property WHERE PropertyType=@PropertyType AND (select CityName from EHS.City where CityId = (select CityId from EHS.Seller where UserName=@username ))= @City
+END
+
+exec EHS.usp_SearchByTypeAndCity '3BHK','sai','hyderabad'
+
+
+
+Create proc EHS.usp_SearchFilter
+@1
+
+
+
+
+create proc EHS.usp_GetAllProp
+as
+begin select * from EHS.Property
+end
+exec EHS.usp_GetAllProp
+
+
+
+ create proc EHS.usp_SearchByTypeAndCity
+@PropertyType varchar(15),
+@PriceRange money
+AS
+BEGIN
+select PropertyName, Landmark, PriceRange
+from EHS.Property
+
+-------------------------------------------------search ends-------------------------------------------
+
+
+select * from EHS.Property
+
+
+
+
+
+
+
+
+--------------------------------------Property Proc-------------------------------------------------
